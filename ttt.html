@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>CRICTON - Master Admin Console</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+        body { 
+            background: #060913; 
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            color: #f1f5f9;
+            overflow-x: hidden;
+        }
+        .admin-card {
+            background: rgba(13, 19, 34, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 18px;
+        }
+        .admin-input {
+            background: #080c18;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #ffffff;
+            border-radius: 12px;
+            padding: 10px 14px;
+            font-size: 13px;
+            width: 100%;
+            transition: border-color 0.2s ease;
+        }
+        .admin-input:focus {
+            outline: none;
+            border-color: #06b6d4;
+        }
+        .nav-btn {
+            color: #94a3b8;
+            font-weight: 700;
+            font-size: 12px;
+            transition: all 0.2s ease;
+        }
+        .nav-btn.active {
+            color: #ffffff;
+            background: rgba(6, 182, 212, 0.15);
+            border: 1px solid rgba(6, 182, 212, 0.35);
+        }
+        .admin-page { display: none; }
+        .admin-page.active { display: block; animation: fadeIn 0.15s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: translateY(0); } }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="min-h-screen pb-24 md:pb-0 flex flex-col md:flex-row">
+
+    <!-- DESKTOP SIDEBAR -->
+    <aside class="hidden md:flex w-64 bg-[#090d1a] border-r border-gray-800/80 p-5 flex-col justify-between shrink-0 h-screen sticky top-0">
+        <div class="space-y-6">
+            <div class="flex items-center gap-3">
+                <img src="https://i.postimg.cc/6q0pMkty/20260803-110152.jpg" class="w-9 h-9 rounded-xl border border-cyan-500 object-cover shadow">
+                <div>
+                    <h1 class="font-black text-sm text-white tracking-wider leading-tight">CRICTON</h1>
+                    <p class="text-[10px] text-cyan-400 font-extrabold tracking-widest uppercase">Admin Panel</p>
+                </div>
+            </div>
+
+            <nav class="space-y-1">
+                <button onclick="navAdmin('dashboard')" id="dtab-dashboard" class="nav-btn active w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-left">
+                    <i class="fa-solid fa-chart-pie text-cyan-400 text-sm"></i> <span>Overview & Traffic</span>
+                </button>
+                <button onclick="navAdmin('matches')" id="dtab-matches" class="nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-left">
+                    <i class="fa-solid fa-tower-broadcast text-blue-400 text-sm"></i> <span>Live Matches</span>
+                </button>
+                <button onclick="navAdmin('tv')" id="dtab-tv" class="nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-left">
+                    <i class="fa-solid fa-tv text-purple-400 text-sm"></i> <span>Live TV</span>
+                </button>
+                <button onclick="navAdmin('shorts')" id="dtab-shorts" class="nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-left">
+                    <i class="fa-solid fa-bolt text-rose-500 text-sm"></i> <span>Shorts & Reels</span>
+                </button>
+                <button onclick="navAdmin('categories')" id="dtab-categories" class="nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-left">
+                    <i class="fa-solid fa-shapes text-amber-400 text-sm"></i> <span>Categories</span>
+                </button>
+                <button onclick="navAdmin('notice')" id="dtab-notice" class="nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-left">
+                    <i class="fa-solid fa-bullhorn text-emerald-400 text-sm"></i> <span>Notice Marquee</span>
+                </button>
+            </nav>
+        </div>
+        <div class="text-[10px] text-gray-500 font-bold text-center">CRICTON Master Console</div>
+    </aside>
+
+    <!-- MOBILE TOP BAR -->
+    <header class="md:hidden bg-[#090d1a] border-b border-gray-800 p-3.5 sticky top-0 z-40 flex justify-between items-center">
+        <div class="flex items-center gap-2">
+            <img src="https://i.postimg.cc/6q0pMkty/20260803-110152.jpg" class="w-7 h-7 rounded-lg border border-cyan-400">
+            <span class="font-extrabold text-xs tracking-wider text-white">CRICTON ADMIN</span>
+        </div>
+        <div class="flex items-center gap-1.5 text-xs font-bold text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/20">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span id="mVisitorCount">0</span> Live
+        </div>
+    </header>
+
+    <!-- MOBILE BOTTOM NAVIGATION -->
+    <nav class="md:hidden fixed bottom-0 left-0 right-0 bg-[#090d1a]/95 border-t border-gray-800 backdrop-blur-lg px-2 py-2 z-50 flex justify-around items-center select-none">
+        <button type="button" onclick="navAdmin('dashboard')" id="mtab-dashboard" class="nav-btn active flex flex-col items-center gap-1 p-1">
+            <i class="fa-solid fa-chart-pie text-sm pointer-events-none"></i> <span class="text-[9px] pointer-events-none">Overview</span>
+        </button>
+        <button type="button" onclick="navAdmin('matches')" id="mtab-matches" class="nav-btn flex flex-col items-center gap-1 p-1">
+            <i class="fa-solid fa-tower-broadcast text-sm pointer-events-none"></i> <span class="text-[9px] pointer-events-none">Matches</span>
+        </button>
+        <button type="button" onclick="navAdmin('tv')" id="mtab-tv" class="nav-btn flex flex-col items-center gap-1 p-1">
+            <i class="fa-solid fa-tv text-sm pointer-events-none"></i> <span class="text-[9px] pointer-events-none">Live TV</span>
+        </button>
+        <button type="button" onclick="navAdmin('shorts')" id="mtab-shorts" class="nav-btn flex flex-col items-center gap-1 p-1">
+            <i class="fa-solid fa-bolt text-sm pointer-events-none"></i> <span class="text-[9px] pointer-events-none">Shorts</span>
+        </button>
+        <button type="button" onclick="navAdmin('categories')" id="mtab-categories" class="nav-btn flex flex-col items-center gap-1 p-1">
+            <i class="fa-solid fa-shapes text-sm pointer-events-none"></i> <span class="text-[9px] pointer-events-none">Category</span>
+        </button>
+        <button type="button" onclick="navAdmin('notice')" id="mtab-notice" class="nav-btn flex flex-col items-center gap-1 p-1">
+            <i class="fa-solid fa-bullhorn text-sm pointer-events-none"></i> <span class="text-[9px] pointer-events-none">Notice</span>
+        </button>
+    </nav>
+
+    <!-- MAIN CONTAINER -->
+    <main class="flex-1 p-3.5 md:p-8 max-w-6xl mx-auto w-full space-y-5">
+
+        <!-- PAGE 1: OVERVIEW & TRAFFIC STATS -->
+        <div id="page-dashboard" class="admin-page active space-y-5">
+            <!-- Traffic Grid -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div class="admin-card p-3.5 flex flex-col justify-between border-emerald-500/20">
+                    <span class="text-[10px] text-gray-400 font-bold uppercase">Live Online</span>
+                    <div class="flex items-center justify-between mt-1">
+                        <span class="text-xl font-black text-emerald-400" id="dVisitorCount">0</span>
+                        <i class="fa-solid fa-circle-dot text-emerald-500 animate-ping text-xs"></i>
+                    </div>
+                </div>
+
+                <div class="admin-card p-3.5 flex flex-col justify-between border-cyan-500/20">
+                    <span class="text-[10px] text-gray-400 font-bold uppercase">Today Unique</span>
+                    <div class="flex items-center justify-between mt-1">
+                        <span class="text-xl font-black text-cyan-400" id="statTodayUnique">0</span>
+                        <i class="fa-solid fa-user-check text-cyan-500 text-sm"></i>
+                    </div>
+                </div>
+
+                <div class="admin-card p-3.5 flex flex-col justify-between border-blue-500/20">
+                    <span class="text-[10px] text-gray-400 font-bold uppercase">Today Pageviews</span>
+                    <div class="flex items-center justify-between mt-1">
+                        <span class="text-xl font-black text-blue-400" id="statTodayViews">0</span>
+                        <i class="fa-solid fa-eye text-blue-500 text-sm"></i>
+                    </div>
+                </div>
+
+                <div class="admin-card p-3.5 flex flex-col justify-between border-purple-500/20">
+                    <span class="text-[10px] text-gray-400 font-bold uppercase">Total Pageviews</span>
+                    <div class="flex items-center justify-between mt-1">
+                        <span class="text-xl font-black text-purple-400" id="statTotalViews">0</span>
+                        <i class="fa-solid fa-chart-line text-purple-500 text-sm"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Last 7 Days Traffic Log -->
+            <div class="admin-card p-4 space-y-3">
+                <h2 class="font-extrabold text-xs text-white uppercase tracking-wider flex items-center gap-2">
+                    <i class="fa-solid fa-calendar-days text-cyan-400"></i> Past 7 Days Traffic History
+                </h2>
+                <div id="sevenDaysTrafficList" class="space-y-1.5">
+                    <p class="text-gray-500 text-xs text-center py-3">Loading analytics history...</p>
+                </div>
+            </div>
+
+            <!-- Stream Performance Table -->
+            <div class="admin-card p-4 space-y-3">
+                <h2 class="font-extrabold text-xs text-white uppercase tracking-wider flex items-center gap-2">
+                    <i class="fa-solid fa-fire text-rose-500"></i> Stream Click Ranking
+                </h2>
+                <div id="analyticsList" class="space-y-1.5"></div>
+            </div>
+        </div>
+
+        <!-- PAGE 2: LIVE MATCHES -->
+        <div id="page-matches" class="admin-page space-y-5">
+            <div class="admin-card p-4 md:p-6 space-y-4">
+                <div class="flex justify-between items-center border-b border-gray-800 pb-3">
+                    <h2 class="font-extrabold text-xs text-cyan-400 uppercase tracking-wider">Live Event Setup</h2>
+                    <button id="mCancelBtn" onclick="cancelMatchEdit()" class="hidden text-xs text-rose-400 font-bold">Cancel Edit</button>
+                </div>
+
+                <form id="matchForm" onsubmit="saveMatch(event)" class="space-y-3.5">
+                    <div>
+                        <label class="text-xs text-gray-300 font-semibold block mb-1">Match Title</label>
+                        <input type="text" id="mTitle" placeholder="e.g. Bangladesh vs India - T20 World Cup" class="admin-input" required>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 bg-gray-950/60 p-3 rounded-2xl border border-gray-800">
+                        <div class="space-y-2">
+                            <span class="text-[10px] text-cyan-400 font-extrabold uppercase block">Team 1</span>
+                            <input type="text" id="t1Name" placeholder="Team 1 Name" class="admin-input" required>
+                            <input type="url" id="t1Logo" placeholder="Team 1 Logo URL" class="admin-input" required>
+                        </div>
+                        <div class="space-y-2">
+                            <span class="text-[10px] text-slate-400 font-extrabold uppercase block">Team 2</span>
+                            <input type="text" id="t2Name" placeholder="Team 2 Name" class="admin-input" required>
+                            <input type="url" id="t2Logo" placeholder="Team 2 Logo URL" class="admin-input" required>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <div>
+                            <label class="text-xs text-gray-300 font-semibold block mb-1">Start Time</label>
+                            <input type="datetime-local" id="mStart" class="admin-input" required>
+                        </div>
+                        <div>
+                            <label class="text-xs text-gray-300 font-semibold block mb-1">End Time</label>
+                            <input type="datetime-local" id="mEnd" class="admin-input" required>
+                        </div>
+                        <div>
+                            <label class="text-xs text-gray-300 font-semibold block mb-1">Category</label>
+                            <select id="matchCatSelect" class="admin-input" required>
+                                <option value="">Select Category</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Dynamic Servers -->
+                    <div class="space-y-2.5 bg-gray-950/60 p-3 rounded-2xl border border-gray-800">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs text-gray-300 font-semibold">Stream Servers (M3U8 / Embed / Web)</span>
+                            <button type="button" onclick="addMatchServerInput()" class="text-xs text-cyan-400 font-bold hover:underline">+ Add Server</button>
+                        </div>
+                        <div id="matchServersContainer" class="space-y-2">
+                            <input type="url" class="match-server-input admin-input" placeholder="Server 1 Stream Link" required>
+                        </div>
+                    </div>
+
+                    <button id="mSubmitBtn" type="submit" class="w-full bg-cyan-500 hover:bg-cyan-400 text-black font-extrabold py-3 rounded-xl text-xs uppercase tracking-wider transition">
+                        Save Match
+                    </button>
+                </form>
+
+                <div class="pt-4 border-t border-gray-800 space-y-3">
+                    <h3 class="text-xs font-bold text-gray-400 uppercase">Active Matches</h3>
+                    <div id="adminMatchList" class="grid grid-cols-1 md:grid-cols-2 gap-2.5"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PAGE 3: LIVE TV -->
+        <div id="page-tv" class="admin-page space-y-5">
+            <div class="admin-card p-4 md:p-6 space-y-4">
+                <div class="flex justify-between items-center border-b border-gray-800 pb-3">
+                    <h2 class="font-extrabold text-xs text-purple-400 uppercase tracking-wider">Live TV Channel Setup</h2>
+                    <button id="tvCancelBtn" onclick="cancelTvEdit()" class="hidden text-xs text-rose-400 font-bold">Cancel Edit</button>
+                </div>
+
+                <form id="tvForm" onsubmit="saveTv(event)" class="space-y-3.5">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <div>
+                            <label class="text-xs text-gray-300 font-semibold block mb-1">Channel Name</label>
+                            <input type="text" id="chName" class="admin-input" required>
+                        </div>
+                        <div>
+                            <label class="text-xs text-gray-300 font-semibold block mb-1">Channel Logo URL</label>
+                            <input type="url" id="chLogo" class="admin-input" required>
+                        </div>
+                        <div>
+                            <label class="text-xs text-gray-300 font-semibold block mb-1">Category</label>
+                            <select id="tvCatSelect" class="admin-input" required>
+                                <option value="">Select Category</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="space-y-2.5 bg-gray-950/60 p-3 rounded-2xl border border-gray-800">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs text-gray-300 font-semibold">TV Stream Servers</span>
+                            <button type="button" onclick="addTvServerInput()" class="text-xs text-purple-400 font-bold hover:underline">+ Add Server</button>
+                        </div>
+                        <div id="tvServersContainer" class="space-y-2">
+                            <input type="url" class="tv-server-input admin-input" placeholder="Server 1 Link" required>
+                        </div>
+                    </div>
+
+                    <button id="tvSubmitBtn" type="submit" class="w-full bg-purple-600 hover:bg-purple-500 text-white font-extrabold py-3 rounded-xl text-xs uppercase tracking-wider transition">
+                        Save Channel
+                    </button>
+                </form>
+
+                <div class="pt-4 border-t border-gray-800 space-y-3">
+                    <h3 class="text-xs font-bold text-gray-400 uppercase">Active Channels</h3>
+                    <div id="adminTvList" class="grid grid-cols-1 md:grid-cols-3 gap-2.5"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PAGE 4: SHORTS & REELS (CLOUDINARY INTEGRATED) -->
+        <div id="page-shorts" class="admin-page space-y-5">
+            <div class="admin-card p-4 md:p-6 space-y-4">
+                <div class="flex justify-between items-center border-b border-gray-800 pb-3">
+                    <h2 class="font-extrabold text-xs text-rose-500 uppercase tracking-wider flex items-center gap-2">
+                        <i class="fa-solid fa-cloud-arrow-up"></i> Upload / Add Short Video
+                    </h2>
+                    <a href="shorts.html" target="_blank" class="text-cyan-400 text-xs font-bold hover:underline">
+                        <i class="fa-solid fa-arrow-up-right-from-square mr-1"></i> Preview Shorts
+                    </a>
+                </div>
+
+                <div class="space-y-3.5">
+                    <div>
+                        <label class="text-xs text-gray-300 font-semibold block mb-1">Short Title / Caption</label>
+                        <input type="text" id="shortTitle" placeholder=".." class="admin-input">
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div>
+                            <label class="text-xs text-gray-300 font-semibold block mb-1">Option 1: Paste Video URL (.mp4 / .m3u8)</label>
+                            <input type="text" id="videoUrlInput" placeholder="...." class="admin-input">
+                        </div>
+
+                        <div>
+                            <label class="text-xs text-gray-300 font-semibold block mb-1">Option 2: Direct File Upload (Cloudinary)</label>
+                            <input type="file" id="videoFileInput" accept="video/*" onchange="uploadToCloudinary(this)" class="admin-input file:mr-2 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-rose-500 file:text-white cursor-pointer">
+                        </div>
+                    </div>
+
+                    <!-- Upload Progress -->
+                    <div id="uploadProgressContainer" class="hidden space-y-1">
+                        <div class="flex justify-between text-[11px] font-bold text-rose-400">
+                            <span>Uploading to Cricton...</span>
+                            <span id="uploadPercentage">0%</span>
+                        </div>
+                        <div class="w-full bg-gray-950 h-2 rounded-full overflow-hidden border border-gray-800">
+                            <div id="uploadProgressBar" class="h-full bg-rose-500 w-0 transition-all duration-150"></div>
+                        </div>
+                    </div>
+
+                    <button onclick="saveShortToFirebase()" id="saveShortBtn" class="w-full bg-rose-500 hover:bg-rose-400 text-white font-extrabold py-3 rounded-xl text-xs uppercase tracking-wider transition">
+                        Publish Short
+                    </button>
+                </div>
+
+                <!-- Existing Shorts List -->
+                <div class="pt-4 border-t border-gray-800 space-y-3">
+                    <h3 class="text-xs font-bold text-gray-400 uppercase">Existing Shorts List</h3>
+                    <div id="adminShortsList" class="space-y-2"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PAGE 5: CATEGORIES -->
+        <div id="page-categories" class="admin-page space-y-5">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- Event Categories -->
+                <div class="admin-card p-4 space-y-3">
+                    <h2 class="font-bold text-xs text-cyan-400 uppercase">Event Categories</h2>
+                    <div class="flex gap-2">
+                        <input type="text" id="matchCatInput" placeholder="New Category" class="admin-input">
+                        <button onclick="addMatchCat()" class="bg-cyan-500 text-black px-4 rounded-xl text-xs font-bold shrink-0">Add</button>
+                    </div>
+                    <div id="matchCatList" class="flex flex-wrap gap-1.5 pt-2"></div>
+                </div>
+
+                <!-- TV Categories -->
+                <div class="admin-card p-4 space-y-3">
+                    <h2 class="font-bold text-xs text-purple-400 uppercase">TV Categories</h2>
+                    <div class="flex gap-2">
+                        <input type="text" id="tvCatInput" placeholder="New TV Category" class="admin-input">
+                        <button onclick="addTvCat()" class="bg-purple-600 text-white px-4 rounded-xl text-xs font-bold shrink-0">Add</button>
+                    </div>
+                    <div id="tvCatList" class="flex flex-wrap gap-1.5 pt-2"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PAGE 6: MARQUEE NOTICE -->
+        <div id="page-notice" class="admin-page space-y-5">
+            <div class="admin-card p-4 md:p-6 space-y-4">
+                <h2 class="font-bold text-xs text-emerald-400 uppercase border-b border-gray-800 pb-3">Site Marquee Notice</h2>
+                <form onsubmit="saveSiteNotice(event)" class="space-y-3">
+                    <textarea id="siteNoticeInput" rows="3" class="admin-input leading-relaxed" placeholder="এখানে নোটিশ লিখুন..." required></textarea>
+                    <button type="submit" class="bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold py-2.5 px-5 rounded-xl text-xs uppercase tracking-wider transition">
+                        Update Notice
+                    </button>
+                </form>
+                <div class="p-3 bg-gray-950 rounded-xl border border-gray-800">
+                    <span class="text-[10px] text-gray-500 font-bold uppercase block mb-1">Live Preview:</span>
+                    <marquee id="noticePreview" class="text-xs text-gray-200 font-medium"></marquee>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyD_HBGuQSh_GzqrHqHbgdaoBikLZsK3Qqs",
+            authDomain: "new-all-f99f7.firebaseapp.com",
+            databaseURL: "https://new-all-f99f7-default-rtdb.firebaseio.com",
+            projectId: "new-all-f99f7",
+            storageBucket: "new-all-f99f7.firebasestorage.app",
+            messagingSenderId: "1069748173900",
+            appId: "1:1069748173900:web:158d6336c0f4628133c8e9"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        const CLOUDINARY_CLOUD_NAME = 'dwgvvzbvn';
+        const CLOUDINARY_UPLOAD_PRESET = 'storyapp';
+
+        let matchesData = {}, tvData = {}, shortsData = {};
+        let editMatchKey = null, editTvKey = null;
+        let uploadedVideoUrl = '';
+
+        // Realtime Visitors (from presence and live_online)
+        db.ref("analytics/live_online").on("value", snap => {
+            const count = snap.numChildren() || 0;
+            document.getElementById("dVisitorCount").innerText = count;
+            document.getElementById("mVisitorCount").innerText = count;
+        });
+
+        // Traffic Analytics Overview
+        db.ref("analytics/traffic_overview").on("value", snap => {
+            const data = snap.val() || {};
+            const today = new Date().toISOString().split('T')[0];
+            
+            document.getElementById("statTotalViews").innerText = data.total_pageviews || 0;
+
+            const todayData = (data.daily && data.daily[today]) ? data.daily[today] : {};
+            document.getElementById("statTodayViews").innerText = todayData.pageviews || 0;
+            document.getElementById("statTodayUnique").innerText = todayData.unique_visitors || 0;
+
+            // Render Last 7 Days History
+            const histContainer = document.getElementById("sevenDaysTrafficList");
+            if (data.daily) {
+                const dates = Object.keys(data.daily).sort().reverse().slice(0, 7);
+                histContainer.innerHTML = '';
+                dates.forEach(d => {
+                    const row = data.daily[d];
+                    histContainer.innerHTML += `
+                        <div class="bg-gray-950/70 p-2.5 rounded-xl border border-gray-800 flex items-center justify-between text-xs">
+                            <span class="font-bold text-gray-300"><i class="fa-regular fa-calendar mr-1.5 text-cyan-400"></i> ${d}</span>
+                            <div class="flex items-center gap-3 font-semibold">
+                                <span class="text-cyan-400">${row.unique_visitors || 0} unique</span>
+                                <span class="text-blue-400">${row.pageviews || 0} views</span>
+                            </div>
+                        </div>`;
+                });
+            }
+        });
+
+        // Navigation Switcher
+        function navAdmin(page) {
+            document.querySelectorAll('.admin-page').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+
+            document.getElementById('page-' + page).classList.add('active');
+            
+            const dTab = document.getElementById('dtab-' + page);
+            const mTab = document.getElementById('mtab-' + page);
+            if(dTab) dTab.classList.add('active');
+            if(mTab) mTab.classList.add('active');
+            window.scrollTo(0, 0);
+        }
+
+        // Helper to convert any date string to input[type="datetime-local"] format safely
+        function formatForDateTimeInput(dateStr) {
+            if (!dateStr) return '';
+            const d = new Date(dateStr);
+            if (isNaN(d.getTime())) return '';
+            const pad = n => String(n).padStart(2, '0');
+            return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+        }
+
+        // --- MATCHES MANAGEMENT ---
+        function addMatchServerInput(urlVal = '') {
+            const container = document.getElementById('matchServersContainer');
+            const div = document.createElement('div');
+            div.className = 'flex items-center gap-2';
+            div.innerHTML = `
+                <input type="url" class="match-server-input admin-input" value="${urlVal}" placeholder="Stream Server URL" required>
+                ${container.children.length > 0 ? `<button type="button" onclick="this.parentElement.remove();" class="text-rose-500 p-2"><i class="fa-solid fa-trash"></i></button>` : ''}
+            `;
+            container.appendChild(div);
+        }
+
+        function getMatchServerUrls() {
+            const urls = [];
+            document.querySelectorAll('.match-server-input').forEach(inp => {
+                if (inp.value.trim()) urls.push(inp.value.trim());
+            });
+            return urls;
+        }
+
+        function setMatchServerUrls(urls = []) {
+            const container = document.getElementById('matchServersContainer');
+            container.innerHTML = '';
+            if (urls.length === 0) addMatchServerInput('');
+            else urls.forEach(u => addMatchServerInput(u));
+        }
+
+        function editMatch(key) {
+            const m = matchesData[key];
+            if (!m) return;
+            editMatchKey = key;
+            document.getElementById("mTitle").value = m.title || '';
+            document.getElementById("t1Name").value = m.team1Name || '';
+            document.getElementById("t1Logo").value = m.team1Logo || '';
+            document.getElementById("t2Name").value = m.team2Name || '';
+            document.getElementById("t2Logo").value = m.team2Logo || '';
+            document.getElementById("matchCatSelect").value = m.category || '';
+            
+            // Fixed: Safely prefill datetime inputs
+            document.getElementById("mStart").value = formatForDateTimeInput(m.startTime);
+            document.getElementById("mEnd").value = formatForDateTimeInput(m.endTime);
+
+            let srvs = m.servers || [];
+            if (srvs.length === 0 && m.targetUrl) srvs.push(m.targetUrl);
+            setMatchServerUrls(srvs);
+
+            document.getElementById("mSubmitBtn").innerText = "Update Match";
+            document.getElementById("mCancelBtn").classList.remove("hidden");
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function cancelMatchEdit() {
+            editMatchKey = null;
+            document.getElementById("matchForm").reset();
+            setMatchServerUrls([]);
+            document.getElementById("mSubmitBtn").innerText = "Save Match";
+            document.getElementById("mCancelBtn").classList.add("hidden");
+        }
+
+        function saveMatch(e) {
+            e.preventDefault();
+            const srvs = getMatchServerUrls();
+            if (srvs.length === 0) { alert('Please provide at least 1 stream URL'); return; }
+
+            const startRaw = document.getElementById("mStart").value;
+            const endRaw = document.getElementById("mEnd").value;
+
+            const payload = {
+                title: document.getElementById("mTitle").value.trim() || 'Live Match',
+                team1Name: document.getElementById("t1Name").value.trim() || 'Team 1',
+                team1Logo: document.getElementById("t1Logo").value.trim() || '',
+                team2Name: document.getElementById("t2Name").value.trim() || 'Team 2',
+                team2Logo: document.getElementById("t2Logo").value.trim() || '',
+                startTime: new Date(startRaw).toISOString(),
+                endTime: new Date(endRaw).toISOString(),
+                category: document.getElementById("matchCatSelect").value || 'Cricket',
+                targetUrl: srvs[0] || '',
+                servers: srvs
+            };
+
+            if (editMatchKey) {
+                db.ref("matches/" + editMatchKey).update(payload);
+                cancelMatchEdit();
+            } else {
+                payload.clicks = 0;
+                db.ref("matches").push(payload);
+                cancelMatchEdit();
+            }
+        }
+
+        db.ref("matches").on("value", snap => {
+            const list = document.getElementById("adminMatchList");
+            list.innerHTML = "";
+            matchesData = snap.val() || {};
+            
+            Object.keys(matchesData).forEach(k => {
+                const m = matchesData[k];
+                list.innerHTML += `
+                    <div class="bg-gray-950/70 p-3 rounded-2xl border border-gray-800 flex justify-between items-center text-xs">
+                        <div class="truncate">
+                            <span class="text-[9px] text-cyan-400 font-extrabold uppercase">${m.category}</span>
+                            <p class="font-bold text-gray-100 truncate">${m.title}</p>
+                        </div>
+                        <div class="flex items-center gap-1 shrink-0 pl-2">
+                            <button onclick="editMatch('${k}')" class="text-cyan-400 p-1.5"><i class="fa-solid fa-pen-to-square"></i></button>
+                            <button onclick="db.ref('matches/${k}').remove()" class="text-rose-500 p-1.5"><i class="fa-solid fa-trash"></i></button>
+                        </div>
+                    </div>`;
+            });
+            renderClickRanking();
+        });
+
+        // --- LIVE TV MANAGEMENT ---
+        function addTvServerInput(urlVal = '') {
+            const container = document.getElementById('tvServersContainer');
+            const div = document.createElement('div');
+            div.className = 'flex items-center gap-2';
+            div.innerHTML = `
+                <input type="url" class="tv-server-input admin-input" value="${urlVal}" placeholder="TV Stream URL" required>
+                ${container.children.length > 0 ? `<button type="button" onclick="this.parentElement.remove();" class="text-rose-500 p-2"><i class="fa-solid fa-trash"></i></button>` : ''}
+            `;
+            container.appendChild(div);
+        }
+
+        function getTvServerUrls() {
+            const urls = [];
+            document.querySelectorAll('.tv-server-input').forEach(inp => {
+                if (inp.value.trim()) urls.push(inp.value.trim());
+            });
+            return urls;
+        }
+
+        function setTvServerUrls(urls = []) {
+            const container = document.getElementById('tvServersContainer');
+            container.innerHTML = '';
+            if (urls.length === 0) addTvServerInput('');
+            else urls.forEach(u => addTvServerInput(u));
+        }
+
+        function editTv(key) {
+            const ch = tvData[key];
+            if (!ch) return;
+            editTvKey = key;
+            document.getElementById("chName").value = ch.name || '';
+            document.getElementById("chLogo").value = ch.logo || '';
+            document.getElementById("tvCatSelect").value = ch.category || '';
+            
+            let srvs = ch.servers || [];
+            if (srvs.length === 0 && ch.targetUrl) srvs.push(ch.targetUrl);
+            setTvServerUrls(srvs);
+            
+            document.getElementById("tvSubmitBtn").innerText = "Update Channel";
+            document.getElementById("tvCancelBtn").classList.remove("hidden");
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function cancelTvEdit() {
+            editTvKey = null;
+            document.getElementById("tvForm").reset();
+            setTvServerUrls([]);
+            document.getElementById("tvSubmitBtn").innerText = "Save Channel";
+            document.getElementById("tvCancelBtn").classList.add("hidden");
+        }
+
+        function saveTv(e) {
+            e.preventDefault();
+            const srvs = getTvServerUrls();
+            const payload = {
+                name: document.getElementById("chName").value.trim(),
+                logo: document.getElementById("chLogo").value.trim(),
+                category: document.getElementById("tvCatSelect").value || 'Sports',
+                targetUrl: srvs[0] || '',
+                servers: srvs
+            };
+
+            if (editTvKey) {
+                db.ref("channels/" + editTvKey).update(payload);
+                cancelTvEdit();
+            } else {
+                payload.clicks = 0;
+                db.ref("channels").push(payload);
+                cancelTvEdit();
+            }
+        }
+
+        db.ref("channels").on("value", snap => {
+            const list = document.getElementById("adminTvList");
+            list.innerHTML = "";
+            tvData = snap.val() || {};
+
+            Object.keys(tvData).forEach(k => {
+                const ch = tvData[k];
+                list.innerHTML += `
+                    <div class="bg-gray-950/70 p-2.5 rounded-2xl border border-gray-800 flex items-center justify-between text-xs">
+                        <div class="flex items-center gap-2 truncate">
+                            <img src="${ch.logo}" class="w-7 h-7 rounded-lg object-contain bg-black border border-gray-800 shrink-0">
+                            <div class="truncate">
+                                <p class="font-bold text-gray-100 truncate">${ch.name}</p>
+                                <p class="text-[9px] text-purple-400">${ch.category}</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-1 shrink-0">
+                            <button onclick="editTv('${k}')" class="text-purple-400 p-1.5"><i class="fa-solid fa-pen-to-square"></i></button>
+                            <button onclick="db.ref('channels/${k}').remove()" class="text-rose-500 p-1.5"><i class="fa-solid fa-trash"></i></button>
+                        </div>
+                    </div>`;
+            });
+            renderClickRanking();
+        });
+
+        // --- SHORTS & CLOUDINARY UPLOADER ---
+        function uploadToCloudinary(input) {
+            const file = input.files[0];
+            if (!file) return;
+
+            const progContainer = document.getElementById('uploadProgressContainer');
+            const progBar = document.getElementById('uploadProgressBar');
+            const progPercent = document.getElementById('uploadPercentage');
+            const saveBtn = document.getElementById('saveShortBtn');
+
+            progContainer.classList.remove('hidden');
+            saveBtn.disabled = true;
+            saveBtn.classList.add('opacity-50');
+
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+            formData.append('cloud_name', CLOUDINARY_CLOUD_NAME);
+
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/video/upload`, true);
+
+            xhr.upload.onprogress = (e) => {
+                if (e.lengthComputable) {
+                    const percent = Math.round((e.loaded / e.total) * 100);
+                    progBar.style.width = `${percent}%`;
+                    progPercent.innerText = `${percent}%`;
+                }
+            };
+
+            xhr.onload = () => {
+                if (xhr.status === 200) {
+                    const res = JSON.parse(xhr.responseText);
+                    uploadedVideoUrl = res.secure_url;
+                    document.getElementById('videoUrlInput').value = uploadedVideoUrl;
+                    alert('Video uploaded successfully to Cloudinary!');
+                } else {
+                    alert('Cloudinary upload failed! Check preset configuration.');
+                }
+                progContainer.classList.add('hidden');
+                saveBtn.disabled = false;
+                saveBtn.classList.remove('opacity-50');
+            };
+
+            xhr.onerror = () => {
+                alert('Upload network error occurred.');
+                progContainer.classList.add('hidden');
+                saveBtn.disabled = false;
+                saveBtn.classList.remove('opacity-50');
+            };
+
+            xhr.send(formData);
+        }
+
+        function saveShortToFirebase() {
+            const title = document.getElementById('shortTitle').value.trim();
+            const videoUrl = document.getElementById('videoUrlInput').value.trim() || uploadedVideoUrl;
+
+            if (!title) { alert('Please enter short title'); return; }
+            if (!videoUrl) { alert('Please upload or provide video URL'); return; }
+
+            const payload = {
+                title: title,
+                videoUrl: videoUrl,
+                likes: 0,
+                views: 0,
+                comments_count: 0,
+                createdAt: firebase.database.ServerValue.TIMESTAMP
+            };
+
+            db.ref('shorts').push(payload).then(() => {
+                alert('Short Published Successfully!');
+                document.getElementById('shortTitle').value = '';
+                document.getElementById('videoUrlInput').value = '';
+                document.getElementById('videoFileInput').value = '';
+                uploadedVideoUrl = '';
+            });
+        }
+
+        db.ref('shorts').on('value', snap => {
+            const list = document.getElementById('adminShortsList');
+            list.innerHTML = '';
+            shortsData = snap.val() || {};
+            const keys = Object.keys(shortsData);
+
+            if (keys.length === 0) {
+                list.innerHTML = '<p class="text-xs text-gray-500 text-center py-4">No shorts uploaded yet.</p>';
+                return;
+            }
+
+            keys.reverse().forEach(k => {
+                const s = shortsData[k];
+                list.innerHTML += `
+                    <div class="bg-gray-950/70 p-3 rounded-2xl border border-gray-800 flex items-center justify-between gap-3 text-xs">
+                        <div class="truncate">
+                            <h4 class="font-bold text-gray-100 truncate">${s.title}</h4>
+                            <div class="flex items-center gap-3 text-[10px] text-gray-400 mt-1">
+                                <span><i class="fa-solid fa-eye text-cyan-400"></i> ${s.views || 0}</span>
+                                <span><i class="fa-solid fa-heart text-rose-500"></i> ${s.likes || 0}</span>
+                                <span><i class="fa-solid fa-comment text-purple-400"></i> ${s.comments_count || 0}</span>
+                            </div>
+                        </div>
+                        <button onclick="deleteShort('${k}')" class="text-rose-500 p-2 hover:bg-rose-500/10 rounded-xl transition">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </div>`;
+            });
+        });
+
+        function deleteShort(k) {
+            if (confirm('Delete this short video?')) {
+                db.ref(`shorts/${k}`).remove();
+                db.ref(`shorts_comments/${k}`).remove();
+            }
+        }
+
+        // --- CATEGORIES ---
+        function addMatchCat() {
+            const name = document.getElementById("matchCatInput").value.trim();
+            if (name) db.ref("event_categories").push({ name });
+            document.getElementById("matchCatInput").value = "";
+        }
+
+        db.ref("event_categories").on("value", snap => {
+            const list = document.getElementById("matchCatList");
+            const select = document.getElementById("matchCatSelect");
+            list.innerHTML = ""; select.innerHTML = '<option value="">Select Category</option>';
+            const d = snap.val() || {};
+            Object.keys(d).forEach(k => {
+                list.innerHTML += `<span class="bg-gray-900 border border-gray-800 px-2.5 py-1 rounded-lg text-xs flex items-center gap-2">${d[k].name} <i onclick="db.ref('event_categories/${k}').remove()" class="fa-solid fa-xmark text-gray-500 hover:text-rose-400 cursor-pointer"></i></span>`;
+                select.innerHTML += `<option value="${d[k].name}">${d[k].name}</option>`;
+            });
+        });
+
+        function addTvCat() {
+            const name = document.getElementById("tvCatInput").value.trim();
+            if (name) db.ref("tv_categories").push({ name });
+            document.getElementById("tvCatInput").value = "";
+        }
+
+        db.ref("tv_categories").on("value", snap => {
+            const list = document.getElementById("tvCatList");
+            const select = document.getElementById("tvCatSelect");
+            list.innerHTML = ""; select.innerHTML = '<option value="">Select Category</option>';
+            const d = snap.val() || {};
+            Object.keys(d).forEach(k => {
+                list.innerHTML += `<span class="bg-gray-900 border border-gray-800 px-2.5 py-1 rounded-lg text-xs flex items-center gap-2">${d[k].name} <i onclick="db.ref('tv_categories/${k}').remove()" class="fa-solid fa-xmark text-gray-500 hover:text-rose-400 cursor-pointer"></i></span>`;
+                select.innerHTML += `<option value="${d[k].name}">${d[k].name}</option>`;
+            });
+        });
+
+        // --- MARQUEE NOTICE ---
+        db.ref("site_notice").on("value", snap => {
+            const val = snap.val() || "স্বাগতম CRICTON-এ! সকল লাইভ ম্যাচ কোনো ল্যাগ ছাড়াই উপভোগ করুন।";
+            const input = document.getElementById("siteNoticeInput");
+            const prev = document.getElementById("noticePreview");
+            if (input && document.activeElement !== input) input.value = val;
+            if (prev) prev.innerText = val;
+        });
+
+        function saveSiteNotice(e) {
+            e.preventDefault();
+            const text = document.getElementById("siteNoticeInput").value.trim();
+            if (text) {
+                db.ref("site_notice").set(text);
+                alert("Site Marquee Notice Updated!");
+            }
+        }
+
+        // --- CLICK RANKINGS ---
+        function renderClickRanking() {
+            const container = document.getElementById("analyticsList");
+            if (!container) return;
+            container.innerHTML = "";
+            let items = [];
+
+            Object.keys(matchesData).forEach(k => {
+                items.push({ name: matchesData[k].title, clicks: matchesData[k].clicks || 0, type: 'Match' });
+            });
+            Object.keys(tvData).forEach(k => {
+                items.push({ name: tvData[k].name, clicks: tvData[k].clicks || 0, type: 'TV' });
+            });
+
+            items.sort((a, b) => b.clicks - a.clicks);
+
+            if (items.length === 0) {
+                container.innerHTML = `<p class="text-xs text-gray-500 text-center py-3">No stream click data yet.</p>`;
+                return;
+            }
+
+            items.slice(0, 8).forEach(item => {
+                container.innerHTML += `
+                    <div class="bg-gray-950/70 p-2.5 rounded-xl border border-gray-800 flex items-center justify-between text-xs">
+                        <div class="truncate">
+                            <span class="text-[9px] font-extrabold text-cyan-400 uppercase mr-1">${item.type}</span>
+                            <span class="font-bold text-gray-200">${item.name}</span>
+                        </div>
+                        <span class="font-bold text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded-lg border border-cyan-500/20">${item.clicks} clicks</span>
+                    </div>`;
+            });
+        }
+    </script>
+</body>
+</html>

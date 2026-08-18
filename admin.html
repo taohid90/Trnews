@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TR News - Admin Panel</title>
+    <meta name="theme-color" content="#0f172a">
+
+    <!-- Tailwind CSS & Font Awesome -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;600;700&display=swap" rel="stylesheet">
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+    <style>
+        body { font-family: 'Hind Siliguri', sans-serif; background-color: #080c14; color: #f8fafc; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center p-3 md:p-6">
+
+    <!-- 1. Admin PIN Lock Screen -->
+    <div id="adminLockScreen" class="w-full max-w-sm bg-[#0f172a] border border-slate-800 p-6 rounded-2xl shadow-2xl space-y-4">
+        <div class="text-center space-y-2">
+            <div class="w-12 h-12 rounded-full bg-red-500/10 border border-red-500/30 flex items-center justify-center mx-auto text-red-500 text-xl">
+                <i class="fa-solid fa-newspaper"></i>
+            </div>
+            <h2 class="text-base font-extrabold text-white">TR News Admin Portal</h2>
+            <p class="text-xs text-slate-400">সংবাদ ও বিজ্ঞাপন পরিচালনা করতে PIN দিন</p>
+        </div>
+
+        <div class="space-y-3">
+            <input type="password" id="adminPinInput" placeholder="Enter PIN (Default: 1234)" class="w-full bg-slate-950 border border-slate-700 text-center text-sm font-mono tracking-widest text-white px-4 py-2.5 rounded-xl focus:outline-none focus:border-red-500">
+            <button onclick="loginAdmin()" class="w-full bg-red-600 hover:bg-red-500 text-white font-extrabold text-xs py-3 rounded-xl transition active:scale-95 shadow-lg shadow-red-600/20">
+                লগইন করুন
+            </button>
+        </div>
+    </div>
+
+    <!-- 2. Main Admin Dashboard -->
+    <div id="adminDashboard" class="hidden w-full max-w-4xl bg-[#0f172a] border border-slate-800 rounded-2xl shadow-2xl p-4 md:p-6 space-y-6">
+        
+        <!-- Header -->
+        <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+            <div class="flex items-center gap-2">
+                <div class="bg-red-600 text-white font-black text-sm px-2 py-0.5 rounded">TR</div>
+                <h1 class="font-extrabold text-sm md:text-base text-white uppercase tracking-wider">News Control Dashboard</h1>
+            </div>
+            <div class="flex items-center gap-2">
+                <a href="index.html" target="_blank" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-red-400 text-xs font-bold rounded-lg border border-slate-700 flex items-center gap-1 transition">
+                    <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i> ওয়েবসাইট দেখুন
+                </a>
+                <button onclick="logoutAdmin()" class="px-3 py-1.5 bg-rose-500/20 text-rose-400 hover:bg-rose-500 hover:text-white text-xs font-bold rounded-lg transition border border-rose-500/30">
+                    <i class="fa-solid fa-power-off"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Navigation Tabs -->
+        <div class="flex items-center gap-2 border-b border-slate-800 pb-2 overflow-x-auto no-scrollbar">
+            <button onclick="switchTab('addNews')" id="tabBtn_addNews" class="tab-btn px-4 py-2 rounded-xl text-xs font-bold bg-red-600 text-white transition flex items-center gap-1.5 shrink-0">
+                <i class="fa-solid fa-pen-to-square"></i> সংবাদ প্রকাশ করুন
+            </button>
+            <button onclick="switchTab('manageNews')" id="tabBtn_manageNews" class="tab-btn px-4 py-2 rounded-xl text-xs font-bold bg-slate-900 text-slate-300 hover:bg-slate-800 transition flex items-center gap-1.5 shrink-0">
+                <i class="fa-solid fa-list"></i> প্রকাশিত সংবাদ (<span id="totalNewsCount">0</span>)
+            </button>
+            <button onclick="switchTab('categories')" id="tabBtn_categories" class="tab-btn px-4 py-2 rounded-xl text-xs font-bold bg-slate-900 text-slate-300 hover:bg-slate-800 transition flex items-center gap-1.5 shrink-0">
+                <i class="fa-solid fa-tags"></i> ক্যাটাগরি তৈরি
+            </button>
+            <button onclick="switchTab('ads')" id="tabBtn_ads" class="tab-btn px-4 py-2 rounded-xl text-xs font-bold bg-slate-900 text-slate-300 hover:bg-slate-800 transition flex items-center gap-1.5 shrink-0">
+                <i class="fa-solid fa-rectangle-ad"></i> বিজ্ঞাপন স্ক্রিপ্ট
+            </button>
+        </div>
+
+        <!-- TAB 1: ADD NEWS (PHOTO & VIDEO SUPPORT) -->
+        <div id="tab_addNews" class="tab-content space-y-4">
+            <h3 class="text-xs font-extrabold text-red-400 uppercase tracking-wide flex items-center gap-1.5">
+                <i class="fa-solid fa-circle-plus"></i> নতুন সংবাদ যুক্ত করুন (ছবি ও ভিডিও লিংক)
+            </h3>
+
+            <div class="space-y-3 bg-slate-950 p-4 rounded-xl border border-slate-800">
+                <div>
+                    <label class="text-xs text-slate-400 font-bold block mb-1">সংবাদের শিরোনাম *</label>
+                    <input type="text" id="newsTitleInput" placeholder="আকর্ষণীয় শিরোনাম লিখুন..." class="w-full bg-slate-900 border border-slate-800 text-xs px-3.5 py-2.5 rounded-xl text-white focus:outline-none focus:border-red-500">
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                        <label class="text-xs text-slate-400 font-bold block mb-1">ক্যাটাগরি নির্বাচন করুন *</label>
+                        <select id="newsCategorySelect" class="w-full bg-slate-900 border border-slate-800 text-xs px-3 py-2.5 rounded-xl text-white focus:outline-none focus:border-red-500">
+                            <!-- Categories loaded dynamically -->
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="text-xs text-emerald-400 font-bold block mb-1">
+                            <i class="fa-regular fa-image mr-1"></i> ১. সংবাদের ছবির লিংক (Image URL) *
+                        </label>
+                        <input type="text" id="newsImageUrlInput" placeholder="https://example.com/photo.jpg" class="w-full bg-slate-900 border border-slate-800 text-xs px-3.5 py-2.5 rounded-xl text-white focus:outline-none focus:border-emerald-500">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="text-xs text-rose-400 font-bold block mb-1">
+                        <i class="fa-brands fa-youtube mr-1"></i> ২. সংবাদের ভিডিও লিংক (ঐচ্ছিক / Optional YouTube or MP4 Link)
+                    </label>
+                    <input type="text" id="newsVideoUrlInput" placeholder="https://www.youtube.com/watch?v=... (না থাকলে ফাঁকা রাখুন)" class="w-full bg-slate-900 border border-slate-800 text-xs px-3.5 py-2.5 rounded-xl text-white focus:outline-none focus:border-rose-500">
+                </div>
+
+                <!-- Flags -->
+                <div class="flex flex-wrap gap-4 pt-1">
+                    <label class="flex items-center gap-2 cursor-pointer text-xs text-slate-300">
+                        <input type="checkbox" id="newsIsLead" class="w-4 h-4 accent-red-600 rounded"> প্রধান লিড সংবাদ (Home Main Big Banner)
+                    </label>
+                    <label class="flex items-center gap-2 cursor-pointer text-xs text-slate-300">
+                        <input type="checkbox" id="newsIsBreaking" class="w-4 h-4 accent-red-600 rounded"> ব্রেকিং নিউজ টিকারে দেখান
+                    </label>
+                </div>
+
+                <div>
+                    <label class="text-xs text-slate-400 font-bold block mb-1">বিস্তারিত সংবাদ লিখুন *</label>
+                    <textarea id="newsContentInput" rows="6" placeholder="সম্পূর্ণ সংবাদ বিস্তারিত লিখুন..." class="w-full bg-slate-900 border border-slate-800 text-xs px-3.5 py-2.5 rounded-xl text-white focus:outline-none focus:border-red-500"></textarea>
+                </div>
+
+                <button onclick="publishNews()" class="w-full bg-red-600 hover:bg-red-500 text-white font-extrabold text-xs py-3 rounded-xl transition flex items-center justify-center gap-2 shadow-lg shadow-red-600/20">
+                    <i class="fa-solid fa-paper-plane"></i> সংবাদটি প্রকাশ করুন
+                </button>
+            </div>
+        </div>
+
+        <!-- TAB 2: MANAGE NEWS -->
+        <div id="tab_manageNews" class="tab-content hidden space-y-3">
+            <h3 class="text-xs font-extrabold text-slate-300 uppercase tracking-wide">প্রকাশিত সকল সংবাদের তালিকা</h3>
+            <div id="publishedNewsList" class="space-y-2 max-h-[450px] overflow-y-auto pr-1 no-scrollbar text-xs">
+                <p class="text-center text-slate-500 py-6">লোড হচ্ছে...</p>
+            </div>
+        </div>
+
+        <!-- TAB 3: CATEGORIES -->
+        <div id="tab_categories" class="tab-content hidden space-y-4">
+            <h3 class="text-xs font-extrabold text-sky-400 uppercase tracking-wide">ক্যাটাগরি তৈরি ও ম্যানেজ</h3>
+            
+            <div class="flex gap-2 bg-slate-950 p-3 rounded-xl border border-slate-800">
+                <input type="text" id="newCategoryInput" placeholder="নতুন ক্যাটাগরি নাম (যেমন: অর্থনীতি, বিনোদন)" class="flex-1 bg-slate-900 border border-slate-800 text-xs px-3 py-2 rounded-lg text-white focus:outline-none focus:border-sky-500">
+                <button onclick="addCategory()" class="bg-sky-500 hover:bg-sky-400 text-black font-bold text-xs px-4 py-2 rounded-lg transition">
+                    + যোগ করুন
+                </button>
+            </div>
+
+            <div id="categoriesList" class="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
+                <!-- Categories loaded dynamically -->
+            </div>
+        </div>
+
+        <!-- TAB 4: ADS SCRIPT CONTROLLER -->
+        <div id="tab_ads" class="tab-content hidden space-y-4">
+            <h3 class="text-xs font-extrabold text-amber-400 uppercase tracking-wide flex items-center gap-1.5">
+                <i class="fa-solid fa-code"></i> অ্যাডভার্টাইজমেন্ট কোড ও স্ক্রিপ্ট
+            </h3>
+
+            <div class="space-y-3 bg-slate-950 p-4 rounded-xl border border-slate-800">
+                <div>
+                    <label class="text-xs font-bold text-slate-300 block mb-1">১. টপ ব্যানার অ্যাড স্ক্রিপ্ট (Top Banner Ad Code - HTML/JS)</label>
+                    <textarea id="adTopBannerInput" rows="3" placeholder="Adsterra বা Google Ads স্ক্রিপ্ট কোড পেস্ট করুন..." class="w-full bg-slate-900 border border-slate-800 text-xs px-3 py-2 rounded-xl text-amber-300 font-mono focus:outline-none focus:border-amber-500"></textarea>
+                </div>
+
+                <div>
+                    <label class="text-xs font-bold text-slate-300 block mb-1">২. সংবাদের ভেতরের অ্যাড স্ক্রিপ্ট (In-Article Ad Code)</label>
+                    <textarea id="adInArticleInput" rows="3" placeholder="সংবাদের বিস্তারিত পেজের অ্যাড স্ক্রিপ্ট পেস্ট করুন..." class="w-full bg-slate-900 border border-slate-800 text-xs px-3 py-2 rounded-xl text-amber-300 font-mono focus:outline-none focus:border-amber-500"></textarea>
+                </div>
+
+                <button onclick="saveAdsCode()" class="w-full bg-amber-500 hover:bg-amber-400 text-black font-extrabold text-xs py-2.5 rounded-xl transition flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-floppy-disk"></i> অ্যাড স্ক্রিপ্ট সেভ করুন
+                </button>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const ADMIN_PIN = "1234";
+
+        // Firebase Config
+        const firebaseConfig = {
+            apiKey: "AIzaSyD_HBGuQSh_GzqrHqHbgdaoBikLZsK3Qqs",
+            authDomain: "new-all-f99f7.firebaseapp.com",
+            databaseURL: "https://new-all-f99f7-default-rtdb.firebaseio.com",
+            projectId: "new-all-f99f7",
+            storageBucket: "new-all-f99f7.firebasestorage.app",
+            messagingSenderId: "1069748173900",
+            appId: "1:1069748173900:web:158d6336c0f4628133c8e9"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        const DB_PATHS = {
+            NEWS: 'trnews_app/news',
+            CATEGORIES: 'trnews_app/categories',
+            ADS: 'trnews_app/ads'
+        };
+
+        // Auth
+        function loginAdmin() {
+            const val = document.getElementById('adminPinInput').value;
+            if (val === ADMIN_PIN) {
+                sessionStorage.setItem('trnews_admin_logged', 'true');
+                showDashboard();
+            } else {
+                alert("ভুল পিন কোড!");
+            }
+        }
+
+        function logoutAdmin() {
+            sessionStorage.removeItem('trnews_admin_logged');
+            document.getElementById('adminLockScreen').classList.remove('hidden');
+            document.getElementById('adminDashboard').classList.add('hidden');
+            document.getElementById('adminPinInput').value = '';
+        }
+
+        function showDashboard() {
+            document.getElementById('adminLockScreen').classList.add('hidden');
+            document.getElementById('adminDashboard').classList.remove('hidden');
+            initDashboard();
+        }
+
+        if (sessionStorage.getItem('trnews_admin_logged') === 'true') {
+            showDashboard();
+        }
+
+        // Tabs
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.className = 'tab-btn px-4 py-2 rounded-xl text-xs font-bold bg-slate-900 text-slate-300 hover:bg-slate-800 transition flex items-center gap-1.5 shrink-0';
+            });
+
+            document.getElementById(`tab_${tabId}`).classList.remove('hidden');
+            document.getElementById(`tabBtn_${tabId}`).className = 'tab-btn px-4 py-2 rounded-xl text-xs font-bold bg-red-600 text-white transition flex items-center gap-1.5 shrink-0';
+        }
+
+        // Auto Extract YouTube Thumbnail if Image URL is empty
+        function getYoutubeThumbnail(url) {
+            const ytMatch = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=|shorts\/))([\w-]{11})/);
+            if (ytMatch && ytMatch[1]) {
+                return `https://img.youtube.com/vi/${ytMatch[1]}/hqdefault.jpg`;
+            }
+            return '';
+        }
+
+        // Publish News
+        function publishNews() {
+            const title = document.getElementById('newsTitleInput').value.trim();
+            const category = document.getElementById('newsCategorySelect').value;
+            let imageUrl = document.getElementById('newsImageUrlInput').value.trim();
+            const videoUrl = document.getElementById('newsVideoUrlInput').value.trim();
+            const content = document.getElementById('newsContentInput').value.trim();
+            const isLead = document.getElementById('newsIsLead').checked;
+            const isBreaking = document.getElementById('newsIsBreaking').checked;
+
+            if (!title || !category || !content) {
+                alert("দয়া করে শিরোনাম, ক্যাটাগরি ও বিস্তারিত সংবাদ পূরণ করুন!");
+                return;
+            }
+
+            // If image is blank but video is provided, auto fetch YouTube thumbnail
+            if (!imageUrl && videoUrl) {
+                imageUrl = getYoutubeThumbnail(videoUrl);
+            }
+
+            if (!imageUrl) {
+                alert("দয়া করে একটি ছবির লিংক প্রদান করুন!");
+                return;
+            }
+
+            const timeStr = new Date().toLocaleTimeString('bn-BD', { hour: '2-digit', minute: '2-digit' }) + ', ' + new Date().toLocaleDateString('bn-BD');
+
+            const payload = {
+                title,
+                category,
+                imageUrl,
+                videoUrl,
+                content,
+                isLead,
+                isBreaking,
+                timeString: timeStr,
+                views: 0,
+                timestamp: firebase.database.ServerValue.TIMESTAMP
+            };
+
+            db.ref(DB_PATHS.NEWS).push(payload).then(() => {
+                alert("সংবাদটি সফলভাবে প্রকাশিত হয়েছে!");
+                document.getElementById('newsTitleInput').value = '';
+                document.getElementById('newsImageUrlInput').value = '';
+                document.getElementById('newsVideoUrlInput').value = '';
+                document.getElementById('newsContentInput').value = '';
+                document.getElementById('newsIsLead').checked = false;
+                document.getElementById('newsIsBreaking').checked = false;
+                switchTab('manageNews');
+            }).catch(e => alert(e.message));
+        }
+
+        // Manage News
+        function initNewsListListener() {
+            db.ref(DB_PATHS.NEWS).on('value', snapshot => {
+                const data = snapshot.val();
+                const container = document.getElementById('publishedNewsList');
+                container.innerHTML = '';
+
+                if (!data) {
+                    container.innerHTML = `<p class="text-slate-500 text-center py-6 text-xs">কোনো সংবাদ প্রকাশিত হয়নি।</p>`;
+                    document.getElementById('totalNewsCount').innerText = "0";
+                    return;
+                }
+
+                const keys = Object.keys(data);
+                document.getElementById('totalNewsCount').innerText = keys.length;
+
+                keys.reverse().forEach(key => {
+                    const item = data[key];
+                    const img = item.imageUrl || 'https://images.unsplash.com/photo-1585829365295-ab7cd400c167?w=100';
+                    container.innerHTML += `
+                        <div class="flex items-center justify-between bg-slate-950 p-2.5 rounded-xl border border-slate-800 gap-2">
+                            <div class="relative w-12 h-10 shrink-0 rounded-lg overflow-hidden bg-slate-900">
+                                <img src="${img}" class="w-full h-full object-cover">
+                                ${item.videoUrl ? `<span class="absolute inset-0 bg-black/40 flex items-center justify-center text-white text-[9px]"><i class="fa-solid fa-play"></i></span>` : ''}
+                            </div>
+                            <div class="overflow-hidden flex-1">
+                                <h4 class="font-bold text-white text-xs truncate">${item.title}</h4>
+                                <div class="flex items-center gap-2 text-[10px] text-slate-400">
+                                    <span class="text-red-400">${item.category}</span>
+                                    <span><i class="fa-regular fa-eye"></i> ${item.views || 0}</span>
+                                    ${item.videoUrl ? `<span class="text-emerald-400 font-bold"><i class="fa-solid fa-video text-[9px]"></i> ভিডিও</span>` : ''}
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-1 shrink-0">
+                                <a href="index.html?id=${key}" target="_blank" class="p-1.5 bg-sky-500/20 text-sky-400 hover:bg-sky-500 hover:text-black rounded-lg transition" title="নিউজ দেখুন">
+                                    <i class="fa-solid fa-arrow-up-right-from-square text-xs"></i>
+                                </a>
+                                <button onclick="deleteNews('${key}')" class="p-1.5 bg-rose-500/20 text-rose-400 hover:bg-rose-500 hover:text-white rounded-lg transition" title="ডিলিট করুন">
+                                    <i class="fa-solid fa-trash-can text-xs"></i>
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                });
+            });
+        }
+
+        function deleteNews(key) {
+            if (confirm("আপনি কি নিশ্চিত এই সংবাদটি মুছে ফেলতে চান?")) {
+                db.ref(`${DB_PATHS.NEWS}/${key}`).remove();
+            }
+        }
+
+        // Category Engine
+        function initCategoryListener() {
+            db.ref(DB_PATHS.CATEGORIES).on('value', snapshot => {
+                const data = snapshot.val();
+                const select = document.getElementById('newsCategorySelect');
+                const list = document.getElementById('categoriesList');
+                select.innerHTML = '';
+                list.innerHTML = '';
+
+                if (!data) {
+                    const defaultCats = ["জাতীয়", "রাজনীতি", "আন্তর্জাতিক", "খেলাধুলা", "বিনোদন", "প্রযুক্তি"];
+                    defaultCats.forEach(c => db.ref(DB_PATHS.CATEGORIES).push({ name: c }));
+                    return;
+                }
+
+                Object.keys(data).forEach(k => {
+                    const cat = data[k];
+                    select.innerHTML += `<option value="${cat.name}">${cat.name}</option>`;
+                    list.innerHTML += `
+                        <div class="flex items-center justify-between bg-slate-950 p-2 rounded-xl border border-slate-800">
+                            <span class="font-bold text-white text-xs">${cat.name}</span>
+                            <button onclick="deleteCategory('${k}')" class="text-rose-400 hover:text-rose-300 p-1 text-xs">
+                                <i class="fa-solid fa-xmark"></i>
+                            </button>
+                        </div>
+                    `;
+                });
+            });
+        }
+
+        function addCategory() {
+            const name = document.getElementById('newCategoryInput').value.trim();
+            if (!name) return;
+            db.ref(DB_PATHS.CATEGORIES).push({ name }).then(() => {
+                document.getElementById('newCategoryInput').value = '';
+            });
+        }
+
+        function deleteCategory(k) {
+            if (confirm("এই ক্যাটাগরি ডিলিট করতে চান?")) {
+                db.ref(`${DB_PATHS.CATEGORIES}/${k}`).remove();
+            }
+        }
+
+        // Ads
+        function initAdsListener() {
+            db.ref(DB_PATHS.ADS).once('value', snap => {
+                const ads = snap.val() || {};
+                if (ads.topBanner) document.getElementById('adTopBannerInput').value = ads.topBanner;
+                if (ads.inArticle) document.getElementById('adInArticleInput').value = ads.inArticle;
+            });
+        }
+
+        function saveAdsCode() {
+            const topBanner = document.getElementById('adTopBannerInput').value.trim();
+            const inArticle = document.getElementById('adInArticleInput').value.trim();
+
+            db.ref(DB_PATHS.ADS).set({ topBanner, inArticle }).then(() => {
+                alert("বিজ্ঞাপন কোড সফলভাবে সেভ করা হয়েছে!");
+            });
+        }
+
+        function initDashboard() {
+            initCategoryListener();
+            initNewsListListener();
+            initAdsListener();
+        }
+    </script>
+</body>
+</html>

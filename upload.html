@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cloudinary File Uploader</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        body {
+            background-color: #f0f2f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+        .upload-card {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            max-width: 500px;
+            width: 100%;
+            text-align: center;
+        }
+        h2 {
+            margin-top: 0;
+            color: #333;
+        }
+        .file-input-wrapper {
+            border: 2px dashed #007bff;
+            padding: 30px 20px;
+            border-radius: 8px;
+            background-color: #f8fbff;
+            cursor: pointer;
+            margin-bottom: 20px;
+            transition: all 0.3s;
+        }
+        .file-input-wrapper:hover {
+            background-color: #eef5ff;
+        }
+        input[type="file"] {
+            display: none;
+        }
+        .btn {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            font-size: 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            width: 100%;
+            transition: 0.3s;
+        }
+        .btn:hover {
+            background-color: #0056b3;
+        }
+        .btn:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        #status {
+            margin-top: 15px;
+            font-weight: 500;
+        }
+        .result-box {
+            margin-top: 25px;
+            display: none;
+            text-align: left;
+            background: #fafafa;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+        }
+        .link-input-group {
+            display: flex;
+            gap: 5px;
+            margin-top: 10px;
+        }
+        .link-input-group input {
+            flex: 1;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .copy-btn {
+            padding: 8px 12px;
+            background: #28a745;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .copy-btn:hover {
+            background: #218838;
+        }
+        .preview {
+            max-width: 100%;
+            max-height: 250px;
+            margin-top: 10px;
+            border-radius: 6px;
+            display: block;
+            margin-left: auto;
+            margin-right: auto;
+        }
+    </style>
+</head>
+<body>
+
+<div class="upload-card">
+    <h2>Cloudinary Uploader</h2>
+    <p style="color: #666; font-size: 14px;">ইমেজ অথবা ভিডিও সিলেক্ট করে আপলোড করুন</p>
+
+    <!-- File Input Area -->
+    <label class="file-input-wrapper" for="fileInput">
+        <span id="fileNameDisplay">📁 ফাইল সিলেক্ট করতে এখানে ক্লিক করুন</span>
+        <input type="file" id="fileInput" accept="image/*,video/*">
+    </label>
+
+    <button class="btn" id="uploadBtn" onclick="uploadFile()">আপলোড করুন</button>
+
+    <div id="status"></div>
+
+    <!-- Result Area -->
+    <div class="result-box" id="resultBox">
+        <label><b>আপলোড করা ফাইলের লিঙ্ক:</b></label>
+        <div class="link-input-group">
+            <input type="text" id="fileUrl" readonly>
+            <button class="copy-btn" onclick="copyLink()">Copy</button>
+        </div>
+        <div id="previewContainer"></div>
+    </div>
+</div>
+
+<script>
+    // আপনার Cloudinary সেটিংস
+    const CLOUDINARY_CLOUD_NAME = 'dwgvvzbvn';
+    const CLOUDINARY_UPLOAD_PRESET = 'storyapp';
+
+    const fileInput = document.getElementById('fileInput');
+    const fileNameDisplay = document.getElementById('fileNameDisplay');
+    const uploadBtn = document.getElementById('uploadBtn');
+    const statusDiv = document.getElementById('status');
+    const resultBox = document.getElementById('resultBox');
+    const fileUrl = document.getElementById('fileUrl');
+    const previewContainer = document.getElementById('previewContainer');
+
+    // ফাইল নির্বাচন করলে ফাইলের নাম দেখানো
+    fileInput.addEventListener('change', () => {
+        if (fileInput.files.length > 0) {
+            fileNameDisplay.innerText = "✅ " + fileInput.files[0].name;
+        }
+    });
+
+    // ফাইল আপলোড ফাংশন
+    async function uploadFile() {
+        const file = fileInput.files[0];
+        
+        if (!file) {
+            alert("দয়া করে প্রথমে একটি ফাইল নির্বাচন করুন!");
+            return;
+        }
+
+        // লোডিং স্টেট চালু
+        uploadBtn.disabled = true;
+        uploadBtn.innerText = "আপলোড হচ্ছে...";
+        statusDiv.innerText = "দয়া করে অপেক্ষা করুন...";
+        statusDiv.style.color = "#007bff";
+        resultBox.style.display = "none";
+        previewContainer.innerHTML = "";
+
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+
+        // 'auto/upload' ব্যবহার করায় ইমেজ ও ভিডিও উভয়ই সাপোর্ট করবে
+        const url = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/auto/upload`;
+
+        try {
+            const response = await fetch(url, {
+                method: "POST",
+                body: formData
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                statusDiv.innerText = "✅ সফলভাবে আপলোড সম্পন্ন হয়েছে!";
+                statusDiv.style.color = "#28a745";
+                
+                // লিঙ্ক দেখানো
+                fileUrl.value = data.secure_url;
+                resultBox.style.display = "block";
+
+                // প্রিভিউ দেখানো (ইমেজ বা ভিডিও অনুযায়ী)
+                if (data.resource_type === 'image') {
+                    previewContainer.innerHTML = `<img src="${data.secure_url}" class="preview" alt="Uploaded Image">`;
+                } else if (data.resource_type === 'video') {
+                    previewContainer.innerHTML = `
+                        <video class="preview" controls>
+                            <source src="${data.secure_url}" type="video/mp4">
+                            আপনার ব্রাউজার ভিডিও সাপোর্ট করছে না।
+                        </video>`;
+                }
+            } else {
+                throw new Error(data.error ? data.error.message : "আপলোড ব্যর্থ হয়েছে");
+            }
+        } catch (error) {
+            statusDiv.innerText = "❌ ভুল হয়েছে: " + error.message;
+            statusDiv.style.color = "#dc3545";
+        } finally {
+            uploadBtn.disabled = false;
+            uploadBtn.innerText = "আপলোড করুন";
+        }
+    }
+
+    // লিঙ্ক কপি ফাংশন
+    function copyLink() {
+        fileUrl.select();
+        navigator.clipboard.writeText(fileUrl.value);
+        alert("লিঙ্ক কপি করা হয়েছে!");
+    }
+</script>
+
+</body>
+</html>
